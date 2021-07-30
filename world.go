@@ -32,9 +32,8 @@ type World struct {
 	componentStores []Store
 	systems         []systemBinder
 
-	entities          *list.List
-	freeEntityIndexes []int
-	nextEntityIndex   int
+	entities        *list.List
+	entitiesIndexes IndexPool
 }
 
 func (w *World) AddSystems(systems ...System) {
@@ -44,15 +43,15 @@ func (w *World) AddSystems(systems ...System) {
 }
 
 func (w *World) NewEntity(components ...interface{}) *Entity {
-	entity := &Entity{world: w, index: w.getNewEntityIndex(), mask: makeMask(len(w.componentStores))}
+	entity := &Entity{world: w, index: w.entitiesIndexes.GetFree(), mask: makeMask(len(w.componentStores))}
 	entity.element = w.entities.PushBack(entity)
 	entity.Set(components...)
 	return entity
 }
 
 func (w *World) RemoveEntity(entity *Entity) {
-	w.freeEntityIndexes = append(w.freeEntityIndexes, entity.index)
 	w.entities.Remove(entity.element)
+	w.entitiesIndexes.Release(entity.index)
 
 	for i := 0; i < len(w.componentStores); i++ {
 		if entity.mask.Get(i) {
@@ -70,18 +69,4 @@ func (w *World) Update() {
 			w.systems[i].update(entity)
 		}
 	}
-}
-
-func (w *World) getNewEntityIndex() int {
-	var index int
-
-	if len(w.freeEntityIndexes) == 0 {
-		index = w.nextEntityIndex
-		w.nextEntityIndex++
-	} else {
-		index = w.freeEntityIndexes[len(w.freeEntityIndexes)-1]
-		w.freeEntityIndexes = w.freeEntityIndexes[:len(w.freeEntityIndexes)-1]
-	}
-
-	return index
 }

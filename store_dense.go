@@ -22,54 +22,46 @@
 
 package ento
 
-import (
-	"reflect"
-)
+import "reflect"
 
-type SparseStore struct {
-	zero     reflect.Value
-	slice    reflect.Value
-	capacity int
+type DenseStore struct {
+	sparse  *SparseStore
+	mapping map[int]int
+	indexes IndexPool
 }
 
-func SparseStoreProvider(component interface{}) StoreProvider {
-	return func(capacity int) Store { return NewSparseStore(reflect.TypeOf(component), capacity) }
+func DenseStoreProvider(component interface{}) StoreProvider {
+	return func(capacity int) Store { return NewDenseStore(reflect.TypeOf(component), capacity) }
 }
 
-func NewSparseStore(componentType reflect.Type, capacity int) *SparseStore {
-	return &SparseStore{
-		zero:     reflect.Zero(componentType),
-		slice:    reflect.MakeSlice(reflect.SliceOf(componentType), capacity, capacity),
-		capacity: capacity,
+func NewDenseStore(componentType reflect.Type, capacity int) *DenseStore {
+	return &DenseStore{
+		sparse:  NewSparseStore(componentType, capacity),
+		mapping: make(map[int]int, capacity),
+		indexes: NewIndexPool(capacity),
 	}
 }
 
-func (s *SparseStore) Add(id int, value reflect.Value) {
-	s.ensureCapacity(id + 1)
-	s.Set(id, value)
+func (d *DenseStore) Add(id int, value reflect.Value) {
+	index := d.indexes.GetFree()
+	d.mapping[id] = index
+	d.sparse.Add(index, value)
 }
 
-func (s *SparseStore) Get(id int, value reflect.Value) {
-	value.Set(s.slice.Index(id).Addr())
+func (d *DenseStore) Get(id int, value reflect.Value) {
+	index := d.mapping[id]
+	d.sparse.Get(index, value)
 }
 
-func (s *SparseStore) Set(id int, value reflect.Value) {
-	s.slice.Index(id).Set(value)
+func (d *DenseStore) Set(id int, value reflect.Value) {
+	index := d.mapping[id]
+	d.sparse.Set(index, value)
 }
 
-func (s *SparseStore) Rem(id int) {
-	s.slice.Index(id).Set(s.zero)
-}
+func (d *DenseStore) Rem(id int) {
+	index := d.mapping[id]
+	d.sparse.Rem(index)
 
-func (s *SparseStore) ensureCapacity(capacity int) {
-	if capacity < s.capacity {
-		return
-	}
-
-	capacity = nextPowerOf2(capacity)
-
-	slice := reflect.MakeSlice(s.slice.Type(), capacity, capacity)
-	reflect.Copy(slice, s.slice)
-
-	s.slice, s.capacity = slice, capacity
+	delete(d.mapping, id)
+	d.indexes.Release(index)
 }

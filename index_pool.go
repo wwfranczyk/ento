@@ -22,54 +22,27 @@
 
 package ento
 
-import (
-	"reflect"
-)
-
-type SparseStore struct {
-	zero     reflect.Value
-	slice    reflect.Value
-	capacity int
+type IndexPool struct {
+	free []int
+	next int
 }
 
-func SparseStoreProvider(component interface{}) StoreProvider {
-	return func(capacity int) Store { return NewSparseStore(reflect.TypeOf(component), capacity) }
+func NewIndexPool(capacity int) IndexPool {
+	return IndexPool{free: make([]int, 0, capacity)}
 }
 
-func NewSparseStore(componentType reflect.Type, capacity int) *SparseStore {
-	return &SparseStore{
-		zero:     reflect.Zero(componentType),
-		slice:    reflect.MakeSlice(reflect.SliceOf(componentType), capacity, capacity),
-		capacity: capacity,
-	}
-}
-
-func (s *SparseStore) Add(id int, value reflect.Value) {
-	s.ensureCapacity(id + 1)
-	s.Set(id, value)
-}
-
-func (s *SparseStore) Get(id int, value reflect.Value) {
-	value.Set(s.slice.Index(id).Addr())
-}
-
-func (s *SparseStore) Set(id int, value reflect.Value) {
-	s.slice.Index(id).Set(value)
-}
-
-func (s *SparseStore) Rem(id int) {
-	s.slice.Index(id).Set(s.zero)
-}
-
-func (s *SparseStore) ensureCapacity(capacity int) {
-	if capacity < s.capacity {
-		return
+func (p *IndexPool) GetFree() int {
+	if len(p.free) == 0 {
+		index := p.next
+		p.next++
+		return index
 	}
 
-	capacity = nextPowerOf2(capacity)
+	index := p.free[len(p.free)-1]
+	p.free = p.free[:len(p.free)-1]
+	return index
+}
 
-	slice := reflect.MakeSlice(s.slice.Type(), capacity, capacity)
-	reflect.Copy(slice, s.slice)
-
-	s.slice, s.capacity = slice, capacity
+func (p *IndexPool) Release(index int) {
+	p.free = append(p.free, index)
 }

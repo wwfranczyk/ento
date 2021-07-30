@@ -59,6 +59,13 @@ func (b *WorldBuilder) WithSparseComponents(components ...interface{}) *WorldBui
 	return b
 }
 
+func (b *WorldBuilder) WithDenseComponents(components ...interface{}) *WorldBuilder {
+	for _, component := range components {
+		b.WithComponent(component, DenseStoreProvider(component))
+	}
+	return b
+}
+
 func (b *WorldBuilder) WithSingletonComponents(components ...interface{}) *WorldBuilder {
 	for _, component := range components {
 		b.WithComponent(component, SingletonStoreProvider(component))
@@ -73,10 +80,10 @@ func (b *WorldBuilder) Build(capacity int) *World {
 	}
 
 	world := &World{
-		componentIds:      b.componentIds,
-		componentStores:   stores,
-		entities:          list.New(),
-		freeEntityIndexes: make([]int, 0, 1024),
+		componentIds:    b.componentIds,
+		componentStores: stores,
+		entities:        list.New(),
+		entitiesIndexes: NewIndexPool(capacity),
 	}
 
 	b.componentIds = nil
