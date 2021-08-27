@@ -32,14 +32,20 @@ type c1 struct{ v int }
 type c2 struct{ v int }
 
 type testSystem struct {
-	C1 *c1 `ento:"bind"`
-	C2 *c2 `ento:"bind"`
+	C1 *c1 `ento:"required"`
+	C2 *c2 `ento:"optional"`
 
 	sums []int
 }
 
 func (t *testSystem) Update(entity *Entity) {
-	t.sums[entity.index] = t.C1.v + t.C2.v
+	sum := t.C1.v
+
+	if t.C2 != nil {
+		sum += t.C2.v
+	}
+
+	t.sums[entity.index] = sum
 }
 
 func TestSystem(t *testing.T) {
@@ -54,7 +60,7 @@ func TestSystem(t *testing.T) {
 		e := w.NewEntity()
 		e.Set(c1{i})
 		if i%2 == 0 {
-			e.Set(c2{i * 2})
+			e.Set(c2{i})
 		}
 	}
 
@@ -62,9 +68,9 @@ func TestSystem(t *testing.T) {
 
 	for i := 0; i < N; i++ {
 		sum := ts.sums[i]
-		expected := 0
+		expected := i
 		if i%2 == 0 {
-			expected += i * 3
+			expected += i
 		}
 
 		assert.Equal(t, expected, sum)

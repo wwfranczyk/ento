@@ -8,7 +8,9 @@ See [examples](./examples) folder.
 From [hello.go](./examples/hello/hello.go):
 
 ```go
-package main
+import (
+	"github.com/wfranczyk/ento"
+)
 
 type Component1 struct{ value int }
 type Component2 struct{ value int }
@@ -16,38 +18,27 @@ type Component3 struct{ value int }
 
 type System struct {
 	// Always use pointer to base component type (!)
-	// Add `ento:"bind"` tag to automatically bind components
-	Component1 *Component1 `ento:"bind"`
-
-	// Components are bound by type, not name
-	Renamed *Component2 `ento:"bind"`
+	// Add `ento` tag to automatically bind components
+	C1 *Component1 `ento:"required"`
+	C2 *Component2 `ento:"required"`
+	C3 *Component2 `ento:"optional"`
 
 	// Systems can have non-component-bound fields
 	calls int
 }
 
 // Update implements ento.System
-// It will be called only for entities that have both tagged components
+// Based on `ento` tag, entities will be selected for update by the system.
+// Entities that do not contain all the `required` components will be skipped.
 func (s *System) Update(entity *ento.Entity) {
-	// Access automatically bound components from currently passed entity
-	s.Component1.value += s.Renamed.value
+	// When Update is called, all the tagged components
+	// will be already replaced with values from entity
+	s.C1.value += s.C2.value
 
-	// Get components from entity manually (somewhat slower than automatic binding)
-	// Can be used for "optional" components
-	var c3 *Component3
-	entity.Get(&c3)
-
-	// If entity does not have the component, the pointer value will be set to nil
-	if c3 != nil {
-		s.Component1.value += c3.value
+	// Optional field will be set to null if entity does not contain them
+	if s.C3 != nil {
+		s.C1.value += s.C3.value
 	}
-
-	s.calls++
-}
-
-func (s *System) reportCalls() {
-	println(s.calls)
-	s.calls = 0
 }
 
 func main() {
@@ -63,27 +54,28 @@ func main() {
 	world.AddSystems(system)
 
 	// Create entities (they are added to the world immediately)
-	world.NewEntity(Component1{1}, Component2{2}, Component3{3})
+	entity := world.NewEntity(Component1{1}, Component2{1})
 
-	// Use Set to add or update their components
-	entity := world.NewEntity()
-	entity.Set(Component1{0}) // Will not be handled by System
+	// Use Set to add or change their components
+	entity.Set(Component3{1})
 
 	// Update the world
 	world.Update()
-	system.reportCalls() // Prints: 1
 
-	// Update the entity (add Component2)
-	entity.Set(Component2{5})
+	// Use Get to receive component value (or nil if not present)
+	var c1 *Component1
+	entity.Get(&c1)
+	println(c1.value == 3) // true
 
-	world.Update()
-	system.reportCalls() // Prints: 2
-
-	// Update the entity (remove Component2)
+	// Use Rem to remove component from entity
+	// As Component2 is `required` in the System
+	// it will no longer be updated by it
 	entity.Rem(Component2{})
 
 	world.Update()
-	system.reportCalls() // Prints: 1
+
+	entity.Get(&c1)
+	println(c1.value == 3) // true - the entity is no longer updated by the system
 }
 ```
 

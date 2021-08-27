@@ -29,15 +29,19 @@ import (
 
 type systemBinder struct {
 	System
-	mask   mask
-	stores []Store
-	values []reflect.Value
+	mask     mask
+	ids      []int
+	stores   []Store
+	values   []reflect.Value
+	zeros    []reflect.Value
+	required []bool
 }
 
 func newSystemBinder(world *World, system System) systemBinder {
 	const (
-		componentTag     = "ento"
-		componentTagBind = "bind"
+		componentTag         = "ento"
+		componentTagRequired = "required"
+		componentTagOptional = "optional"
 	)
 
 	systemValue := reflect.ValueOf(system).Elem()
@@ -45,8 +49,11 @@ func newSystemBinder(world *World, system System) systemBinder {
 	systemFieldsNum := systemType.NumField()
 
 	mask := makeMask(len(world.componentStores))
+	ids := make([]int, 0, systemFieldsNum)
 	stores := make([]Store, 0, systemFieldsNum)
 	values := make([]reflect.Value, 0, systemFieldsNum)
+	zeros := make([]reflect.Value, 0, systemFieldsNum)
+	required := make([]bool, 0, systemFieldsNum)
 
 	for i := 0; i < systemFieldsNum; i++ {
 		field := systemType.Field(i)
@@ -59,23 +66,43 @@ func newSystemBinder(world *World, system System) systemBinder {
 		componentType := componentValue.Type().Elem()
 		componentId := world.componentIds[componentType]
 
+		ids = append(ids, componentId)
+		stores = append(stores, world.componentStores[componentId])
+		values = append(values, componentValue)
+		zeros = append(zeros, reflect.Zero(componentValue.Type()))
+
 		switch tag {
-		case componentTagBind:
+		case componentTagRequired:
 			mask.Set(componentId)
-			stores = append(stores, world.componentStores[componentId])
-			values = append(values, componentValue)
+			required = append(required, true)
+		case componentTagOptional:
+			required = append(required, false)
 		default:
 			panic(fmt.Sprintf("unrecognised tag: %s", tag))
 		}
 	}
 
-	return systemBinder{System: system, mask: mask, stores: stores, values: values}
+	return systemBinder{
+		System:   system,
+		mask:     mask,
+		ids:      ids,
+		stores:   stores,
+		values:   values,
+		zeros:    zeros,
+		required: required,
+	}
 }
 
 func (b *systemBinder) update(entity *Entity) {
 	if entity.mask.Contains(b.mask) {
-		for i, store := range b.stores {
-			store.Get(entity.index, b.values[i])
+		for i := range b.stores {
+			if b.required[i] {
+				b.stores[i].Get(entity.index, b.values[i])
+			} else if entity.mask.Get(b.ids[i]) {
+				b.stores[i].Get(entity.index, b.values[i])
+			} else {
+				b.values[i].Set(b.zeros[i])
+			}
 		}
 		b.Update(entity)
 	}

@@ -36,13 +36,13 @@ func main() {
 		WithSingletonComponents(SingletonComponent{1}).
 		Build(8)
 
-	// Use zero-value for singleton component as he value is ignored
+	// Use zero-value for singleton component as the value is ignored
 	// Only value used at registration is used
 	entity1 := world.NewEntity(NormalComponent{1}, SingletonComponent{})
 	entity2 := world.NewEntity(NormalComponent{2}, SingletonComponent{})
 
 	// Singleton components must still be explicitly added to entities
-	// Get(c **SingletonComponent) on such entity will set c to nil
+	// Get(c **SingletonComponent) on below entity will set c to nil
 	world.NewEntity(NormalComponent{3})
 
 	var singleton1, singleton2 *SingletonComponent
