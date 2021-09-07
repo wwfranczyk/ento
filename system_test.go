@@ -57,7 +57,7 @@ func TestSystem(t *testing.T) {
 	w.AddSystems(ts)
 
 	for i := 0; i < N; i++ {
-		e := w.NewEntity()
+		e := w.AddEntity()
 		e.Set(c1{i})
 		if i%2 == 0 {
 			e.Set(c2{i})

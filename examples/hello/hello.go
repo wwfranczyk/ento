@@ -47,14 +47,16 @@ type System struct {
 // Based on `ento` tag, entities will be selected for update by the system.
 // Entities that do not contain all the `required` components will be skipped.
 func (s *System) Update(entity *ento.Entity) {
-	// When Update is called, all the tagged components
-	// will be already replaced with values from entity
+	// Before Update is called, all tagged components
+	// will be replaced with values from entity
 	s.C1.value += s.C2.value
 
 	// Optional field will be set to null if entity does not contain them
 	if s.C3 != nil {
 		s.C1.value += s.C3.value
 	}
+
+	s.calls++
 }
 
 func main() {
@@ -69,19 +71,20 @@ func main() {
 	system := &System{}
 	world.AddSystems(system)
 
-	// Create entities (they are added to the world immediately)
-	entity := world.NewEntity(Component1{1}, Component2{1})
+	// Create an entity (it is added to the world immediately)
+	entity := world.AddEntity(Component1{1}, Component2{1})
 
-	// Use Set to add or change their components
+	// Use Set to add or change entity components
 	entity.Set(Component3{1})
 
 	// Update the world
 	world.Update()
+	println(system.calls) // prints: 1
 
 	// Use Get to receive component value (or nil if not present)
 	var c1 *Component1
 	entity.Get(&c1)
-	println(c1.value == 3) // true
+	println(c1.value == 3) // prints: true
 
 	// Use Rem to remove component from entity
 	// As Component2 is `required` in the System
@@ -89,6 +92,7 @@ func main() {
 	entity.Rem(Component2{})
 
 	world.Update()
+	println(system.calls) // prints: 1 - the system was not called
 
 	entity.Get(&c1)
 	println(c1.value == 3) // true - the entity is no longer updated by the system

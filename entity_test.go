@@ -38,8 +38,8 @@ func TestEntity(t *testing.T) {
 		WithSingletonComponents(C3{3}).
 		Build(2)
 
-	e1 := w.NewEntity()
-	e2 := w.NewEntity()
+	e1 := w.AddEntity()
+	e2 := w.AddEntity()
 
 	e1.Set(C1{1}, C2{2}, C3{1})
 	e2.Set(C1{3}, C3{2})

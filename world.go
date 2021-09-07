@@ -42,7 +42,7 @@ func (w *World) AddSystems(systems ...System) {
 	}
 }
 
-func (w *World) NewEntity(components ...interface{}) *Entity {
+func (w *World) AddEntity(components ...interface{}) *Entity {
 	entity := &Entity{world: w, index: w.entitiesIndexes.GetFree(), mask: makeMask(len(w.componentStores))}
 	entity.element = w.entities.PushBack(entity)
 	entity.Set(components...)
