@@ -46,10 +46,11 @@ func main() {
 
 	// Use Each to iterate all entities with required components
 	view.Each(func(entity *ento.Entity) {
-		var c *Component1
-		entity.Get(&c)
+		var c1 *Component1
+		var c2 *Component2
+		entity.Get(&c1, &c2)
 
 		// No need to check for nil
-		println(c.value)
+		println(c1.value, c2.value)
 	})
 }
