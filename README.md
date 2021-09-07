@@ -1,5 +1,7 @@
 # About
-Ento is an Entity Component System written in Go.
+Ento is an Entity Component System written in Go. 
+
+[![Go](https://github.com/wfranczyk/ento/actions/workflows/go.yml/badge.svg)](https://github.com/wfranczyk/ento/actions/workflows/go.yml)
 
 # Getting Started
 
